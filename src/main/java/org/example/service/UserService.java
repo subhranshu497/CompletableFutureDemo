@@ -3,6 +3,7 @@ package org.example.service;
 import org.example.model.User;
 import org.example.model.UserProfile;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -95,5 +96,42 @@ public class UserService {
         if (loyaltyPoints > 5000) return "VIP";
         if (loyaltyPoints > 2000 && "BASIC".equals(currentTier)) return "PREMIUM";
         return currentTier;
+    }
+    /**
+     * ─────────────────────────────────────────────────────────────────────────
+     * PATTERN 3: Error handling in service layer
+     * ─────────────────────────────────────────────────────────────────────────
+     *
+     * Handle errors at the service layer when you want to provide fallbacks.
+     * Otherwise, let exceptions propagate to the controller.
+     */
+
+    public CompletableFuture<User> findUserWithFallbackAsync(Long id) {
+        return findUserAsync(id)
+                .exceptionallyAsync(throwable ->{
+                    //log the error
+                    System.err.println("Failed to fetch user "+id+" : "+throwable.getMessage());
+                    //return fallback
+                    return User.empty();
+                }, ioExecutor);
+
+    }
+    /**
+     * ─────────────────────────────────────────────────────────────────────────
+     * PATTERN 4: Chaining async operations
+     * ─────────────────────────────────────────────────────────────────────────
+     *
+     * When one operation depends on another, use thenComposeAsync.
+     * Always pass the executor to maintain thread control.
+     */
+    public CompletableFuture<String> getUserRecommendationAsync(Long id){
+        return findUserAsync(id)
+                .thenComposeAsync(user ->
+                        CompletableFuture.supplyAsync(
+                                ()->loyaltyService.getRecommendation(user),
+                                ioExecutor
+                        ),
+                        ioExecutor
+                );
     }
 }

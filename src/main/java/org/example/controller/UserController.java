@@ -4,6 +4,7 @@ import org.example.model.User;
 import org.example.model.UserProfile;
 import org.example.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -63,4 +64,53 @@ public class UserController {
     public CompletableFuture<UserProfile> getUSerProfile(@PathVariable("id") Long id){
         return userService.getUserProfileAsync(id);
     }
+    /**
+     * ─────────────────────────────────────────────────────────────────────────
+     * PATTERN 3: Wrap in ResponseEntity for HTTP control
+     * ─────────────────────────────────────────────────────────────────────────
+     *
+     * Use this when you need to set headers, status codes, etc.
+     */
+    @GetMapping("/{id}/with-status")
+    public CompletableFuture<ResponseEntity<User>> getUserWithStatus(@PathVariable("id") Long id){
+        return userService.findUserWithFallbackAsync(id)
+                .thenApply(user ->{
+                    if(user.id()== 0L){
+                        //fallback user returned
+                        return ResponseEntity.notFound().build();
+                    }
+                    return ResponseEntity.ok(user);
+                });
+    }
+
+    /**
+     * ─────────────────────────────────────────────────────────────────────────
+     * PATTERN 4: Error handling at controller level
+     * ─────────────────────────────────────────────────────────────────────────
+     *
+     * Handle errors and return appropriate HTTP responses.
+     */
+    @GetMapping("/{id}/recommendation")
+    public CompletableFuture<ResponseEntity<String>> getUserRecommendation(@PathVariable("id") Long id){
+        return userService.getUserRecommendationAsync(id)
+                .thenApply(ResponseEntity::ok)
+                .exceptionally(throwable -> {
+                    //log error and return 500
+                    return ResponseEntity.internalServerError()
+                            .body("Unable to get Recomendation: "+throwable.getMessage());
+                });
+    }
+    /**
+     * ─────────────────────────────────────────────────────────────────────────
+     * ❌ ANTI-PATTERN: Blocking in controller
+     * ─────────────────────────────────────────────────────────────────────────
+     *
+     * Never do this - it defeats the purpose of async.
+     * The request thread is blocked, no benefit from async service.
+     */
+    // @GetMapping("/{id}/blocking")
+    // public User getUserBlocking(@PathVariable Long id) {
+    //     // DON'T DO THIS - blocks the request thread
+    //     return userService.findUserAsync(id).join();
+    // }
 }
