@@ -1,6 +1,7 @@
 package org.example.controller;
 
 import org.example.model.User;
+import org.example.model.UserProfile;
 import org.example.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -49,5 +50,17 @@ public class UserController {
     @GetMapping({"/{id}"})
     public CompletableFuture<User> getUser(@PathVariable("id") Long id){
         return userService.findUserAsync(id);
+    }
+
+    /**
+     * ─────────────────────────────────────────────────────────────────────────
+     * PATTERN 2: Transform async result
+     * ─────────────────────────────────────────────────────────────────────────
+     *
+     * Chain transformations before returning.
+     */
+    @GetMapping("/{id}/profile")
+    public CompletableFuture<UserProfile> getUSerProfile(@PathVariable("id") Long id){
+        return userService.getUserProfileAsync(id);
     }
 }
